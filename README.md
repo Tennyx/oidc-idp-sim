@@ -56,15 +56,11 @@ MODULUS=
     - `OKTA_API_KEY` - An Okta API key is NOT needed for the authentication flow. If you are familiar with Okta, this token is mainly used for Okta API management interactions. So why do we need it here? We don't...but unless you're a fan of having to constantly update your Okta identity provider every time you generate a new ngrok link, there is a task in this repo that refreshes your Okta IDP links to match your existing ngrok URL. If you do not have a valid API key saved somewhere from before, create a new one in your Okta org at: **Security** -> **API**. Tab over to **Tokens** and **Create Token**. Paste the value into this env var - and never ever ever let anyone else see it!
     - `OKTA_DOMAIN_URL` - The Okta domain URL for your org.
 
-7. Time to create an app in your Okta org which a user will be accessing. The end game of this repo is to have a user granted tokens from Okta in the URL. We don't actually need a running application to handle the, so we will use http://localhost:8080 as a "dummy application" URL.
+7. Time to create an app in your Okta org which a user will be accessing. The end game of this repo is to have a user with tokens granted from Okta. We will eventually be running the OIDC IDP server on port 5000 and our client application on port 5001.
     - In your Okta dashboard, go to **Applications** -> **Applications** and click **Add Application**. On the next page, click **Create New App**. Select **Single Page App (SPA)** as your platform. Click **Create**.
-    - Name the application whatever you want, add http://localhost:8080 to the **Login Redirect URIs** and **Save**.
+    - Name the application whatever you want, add http://localhost:5001/login to the **Login Redirect URIs**, check the Implicit Grant Type and **Save**.
     
-    ![SPA_CREATE_1](https://i.imgur.com/4qv9gTF.png)
-    
-    - On the next page under the **General Settings** box, click **Edit** and check off **Implicit**, **Allow ID Token with implicit grant type** and **Allow Access Token with implicit grant type** and **Save**.
-    
-    ![SPA_CREATE_2](https://i.imgur.com/XrGiBSi.png)
+    ![SPA_CREATE_1](https://i.imgur.com/WwCld2b.png)
     
     >**NOTE:** In a live setting, you never want to use Implicit flow. It's convenient for testing purposes, but not a secure OIDC flow.
     - With this app created, copy the **Client ID** and return to your .env file and paste it into `OKTA_CLIENT_ID`.
@@ -89,23 +85,28 @@ MODULUS=
     - As for the **Authorize URL**, you can see Okta has a bunch of placeholder values for customizing this URL. Here's how we will fill these values out before pasting to our `.env`:
         - `{client_id}` - Paste the value from your `.env` variable `OKTA_CLIENT_ID`.
         - `{responseType}` - `id_token`. This means that at the end of the flow, Okta will return a "fat token" with user profile information using the implicit flow.
-        - `{responseMode}` - `fragment`. The token mentioned above will appear as a "fragment" after a hash in your URL at our "dummy application" endpoint of http://localhost:8080.
+        - `{responseMode}` - `fragment`. The token mentioned above will appear as a "fragment" after a hash in your URL at our client application endpoint of http://localhost:5001/login.
         - `{scopes}` - `openid profile email`.
-        - `{redirectUri}` - `http://localhost:8080`. Redirect to our "dummy application."
+        - `{redirectUri}` - `http://localhost:5001/login`. Redirect to our client application.
         - `{state}` - For this testing purpose, it can be whatever you want.
         - `{nonce}` - For this testing purpose, it can be whatever you want.
     
-    Once this URL is formed, paste it into `IDP_OIDC_URL` in you `.env` file. This isn't actually referenced anywhere in the code, it's just there for you to reference later and copy/paste into a browser to initiate the flow.
+    Once this URL is formed, paste it into `IDP_OIDC_URL` in you `.env` file.
 
 12. Since we are creating our IDP simulator on a local server, we will use `ngrok` to route web traffic to `localhost:5000` (the default port for flask) and vice-versa. It's finally time to generate this URL!
     - In the terminal, type `./ngrok http 5000`. This will fire up ngrok and create a couple URLs that route to your `localhost:5000` address. Copy the link starting with `https` and paste it into your `NGROK_URL` environment variable in `.env`.
 13. Your `.env` file should now be fully populated with the exception of `PRIVATE_KEY`, `PUBLIC_KEY`, and `MODULUS`. These will be auto-generated when you...
 
-## Run the Server 
+## Run the Servers 
 
-FINALLY! After all that setup it's finally time to run your OIDC IDP simulator. Back in terminal, (make sure you still see the `(env)` at the beginning of your terminal line, indicating you are still in the Python virtual environment) you can start the flask server with the command `python app.py`. So what happens now?
+FINALLY! After all that setup it's finally time to run your OIDC IDP simulator and client app. Back in terminal, (make sure you still see the `(env)` at the beginning of your terminal line, indicating you are still in the Python virtual environment). 
 
-- Two tasks run everytime you initiate the server with `python app.py`:
+
+### Run OIDC Server
+
+Let's start with the OIDC IDP server. Run the command `cd idp_server && python idp_server.py`. This fires up your OIDC server on port 5000.
+
+- Two tasks run everytime you initiate this server:
 
     1. Via the Okta API, IDP URLs are automatically generated and refreshed in your org based off of your `NGROK_URL` value in the `.env`. This is why we only used placeholders before when setting that Okta configuration up. Also, this task will check the value of `USERINFO_FLOW`. When `USERINFO_FLOW` is `false`, this task will ensure the optional **Userinfo endpoint** is empty in your Okta IDP config. When `true`, the task generates a `{NGROK_URL}/userinfo` endpoint in that field.
     
@@ -126,19 +127,27 @@ Keys generated and added to .env file.
  * Debug mode: off
  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
  ```
- - Time to test it out! Back in your `.env` file, find the `IDP_OIDC_URL` that you pasted in above. Copy it.
- - Open a browser, then open a new incognito/private window. Paste the `IDP_OIDC_URL` into the browser URL bar and hit enter.
- - If everything worked - you should see an `id_token` in the URL (don't mind the sad dinosaur):
  
- ![FLOW_1](https://i.imgur.com/GSqrCK6.png)
+ ### Run Client Application
  
- In a live IDP, there would be some sort of authentication credential prompt here - but we are skipping that step. This repo is just interested in the interaction between the IDP and Okta. Copy the ID token and paste it into your favorite JWT decoder (I recommend https://token.dev) to see the token claims.
+ - Back in terminal, open a new tab with `cmd + t`. Then type the command `cd client && python client.py`. This spins up your test client application on port 5001.
+ 
+ ## Test it Out!
+ - In a browser, navigate to `http://localhost:5001`. You will see our client app running with a link to **Login with External IDP Simulator**. Click it.
+ 
+ ![FLOW_1](https://i.imgur.com/pkeMsir.png)
+ 
+- Next you will be redirected to the IDP's /authorize endpoint where a fake login screen exists. This just exists as an interstitial example and it doesn't matter what (if any) credentials you enter. **Click Login with IDP**
+
+ ![FLOW_1](https://i.imgur.com/wqoCihB.png)
+ 
+- Now an OIDC flow takes behind the scenes between Okta and the IDP, eventually resulting in a redirection to your client app with an ID token granted.
 
  ## Under the Hood
 
-So you have this setup, hopefully you are successfully receiving tokens. But what is going on in this flow? Thanks to `ngrok` and the browser network tab, we can nicely follow this whole flow through requests and responses. Navigate to `http://localhost:4040` to see these calls in action. There are also notes in the `app.py` file explaining what is taking place at each endpoint.
+So you have this setup, hopefully you are successfully receiving a token. But what is going on in this flow? Thanks to `ngrok` and the browser network tab, we can nicely follow this whole process through requests and responses. Navigate to `http://localhost:4040` to see these calls in action. There are also notes in the `idp_server.py` file explaining what is taking place at each endpoint.
   
-- When you paste the OIDC link into your browser:
+- When you click **Login with External IDP Simulator** at `http://localhost:5001`, you are redirecting to the `IDP_OIDC_URL` we created earlier in our `.env` file.
 
 ```
 https://{OKTA_DOMAIN_URL}/oauth2/v1/authorize?
@@ -147,7 +156,7 @@ https://{OKTA_DOMAIN_URL}/oauth2/v1/authorize?
                         response_type=id_token&
                         response_mode=fragment&
                         scope=openid+email&
-                        redirect_uri=http://localhost:8080&
+                        redirect_uri=http://localhost:5001/login&
                         state=state&
                         nonce=nonce
 ```
@@ -175,15 +184,15 @@ It is almost identical to an OIDC flow with your Okta org as IDP. The big differ
 
  ![REQ_3](https://i.imgur.com/ABiIkwE.png)
  
- This is good enough for Okta! After all these steps, Okta will finally grant its own ID token to the user accessing "dummy app" `http://localhost:8080`.
+ This is good enough for Okta! After all these steps, Okta will finally grant its own ID token to the user accessing our client app at `http://localhost:5001/login`.
 
  ## The Userinfo Flow
 
 One last thing to go over: In the example above, our `.env` `USERINFO_FLOW` value is false. As mentioned before, that means there is no `/userinfo` endpoint populating our external IDP configured in Okta. However - if an endpoint exists in that optional field, the flow looks slightly different. 
 
-- Run `ctrl+c` on your flask server to cancel it.
+- Run `ctrl+c` on your flask OIDC IDP server to cancel it.
 - In `.env`, change the `USERINFO_FLOW` value to `true`.
-- Back in terminal, run `python app.py` to run the server again. You should see a message `Okta IDP endpoints updated...` as the `/userinfo` endpoint in your IDP config should now be populated. IF this field is populated, Okta will not get user information from the ID token returned, but rather it will make an extra call to the `/userinfo` endpoint of the IDP sim with the access token you returned at `/token`.
+- Back in terminal, run `python idp_server.py` to run the server again. You should see a message `Okta IDP endpoints updated...` as the `/userinfo` endpoint in your IDP config should now be populated. IF this field is populated, Okta will not get user information from the ID token returned, but rather it will make an extra call to the `/userinfo` endpoint of the IDP sim with the access token you returned at `/token`.
 - Take a look here:
 
 ![USERINFO_1](https://i.imgur.com/Z6fZlKi.png)
