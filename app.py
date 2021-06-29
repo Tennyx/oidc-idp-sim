@@ -1,4 +1,4 @@
-from flask import Flask, request, make_response, redirect, jsonify
+from flask import Flask, request, make_response, redirect, jsonify, render_template
 import tasks
 import jwt
 import time
@@ -45,10 +45,10 @@ but this step is unnecessary for testing purposes.'''
 @app.route('/authorize')
 def authorize():
 	global auth_code
-	okta_domain_url = os.environ.get('OKTA_DOMAIN_URL')
 	state = request.args['state']
 	auth_code = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-	return redirect(f'{okta_domain_url}/oauth2/v1/authorize/callback?code={auth_code}&state={state}')
+	redirect_uri = f'{request.args["redirect_uri"]}?code={auth_code}&state={state}'
+	return render_template('idp_login.html', redirect_uri=redirect_uri)
 
 
 ####################################################

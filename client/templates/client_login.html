@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Login</title>
+	<script type="text/javascript">
+		function base64URL(string) {
+			return string.toString(CryptoJS.enc.Base64).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+		}
+
+		function parseJwt(token) {
+			let base64Url = token.split('.')[1];
+			let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+			let jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+			}).join(''));
+
+			return JSON.parse(jsonPayload);
+		};
+
+		function renderTokenData (token){
+			const idTokenDecoded = parseJwt(token);
+			const idTokenEncNode = document.createTextNode(token);
+			const idTokenDecNode = document.createTextNode(idTokenDecoded);
+			let idDiv = document.getElementById('id-token');
+			let idDivDec = document.getElementById('id-token-decoded');
+			idDiv.appendChild(idTokenEncNode);
+			
+			let claimNode, claimTitleNode, claimTitleText, claimDataNode, claimDataText;
+
+			for(claim in idTokenDecoded) {
+				claimNode = document.createElement('div');
+				claimNode.classList.add('claim');
+
+				claimTitleNode = document.createElement('span');
+				claimTitleNode.classList.add('claim-title');
+				claimTitleText = document.createTextNode(claim);
+				claimTitleNode.appendChild(claimTitleText);
+
+				claimDataNode = document.createElement('span');
+				claimDataNode.classList.add('claim-data');
+				claimDataText = document.createTextNode(idTokenDecoded[claim]);
+				claimDataNode.appendChild(claimDataText);
+				
+				claimNode.appendChild(claimTitleNode);
+				claimNode.appendChild(claimDataNode);
+				idDivDec.appendChild(claimNode);
+			}
+		}
+
+		let idToken = (window.location.hash).split('&')[0].split('=')[1];
+
+		window.addEventListener('load', function () {
+			renderTokenData(idToken);
+		});
+	</script>
+	<link href="https://cdn.jsdelivr.net/npm/bootswatch@5.0.2/dist/superhero/bootstrap.min.css" rel="stylesheet">
+	<style type="text/css">
+		body {
+			background: #007DC1;
+		}
+
+		a {
+			color: #46B3E9;
+		}
+
+		a:hover {
+			color: white;
+		}
+
+		.container {
+			width: 80%;
+			margin: 100px auto 20px auto;
+			text-align: center;
+		}
+
+		.card {
+			background:rgba(2,2,2,0.2);
+			padding: 50px;
+			box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+			width: 100%;
+			word-wrap: break-word;
+			color: #46B3E9;
+		}
+
+		#id-token-decoded {
+			padding: 25px;
+		}
+
+		.claim {
+			display: grid;
+			width: 100%;
+			grid-template-areas: 'title data';
+			grid-template-columns: 50%;
+		}
+
+		.claim-title {
+			grid-area: 'title';
+			text-align: right;
+			color: #46B3E9;
+			margin: 5px;
+			word-wrap: break-word;
+		}
+
+		.claim-data {
+			grid-area: 'data';
+			text-align: left;
+			margin: 5px;
+			width: 50%;
+			word-wrap: break-word;
+			color: white;
+		}
+
+		.data-title {
+			margin-top: 50px;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h2>Logged into client application</h2>
+		<h4 class="data-title">Your ID token is:</h4>
+		<div class="card" id="id-token"></div>
+		<h4 class="data-title">Decoded:</h4>
+		<div class="card" id="id-token-decoded"></div>
+		<h4 class="data-title">To see the requests and responses from Okta to the IDP, go to <a href="http://localhost:4040" target="_blank">http://localhost:4040</a></h4>
+	</div>
+</body>
+</html>
