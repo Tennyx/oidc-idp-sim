@@ -99,7 +99,7 @@ MODULUS=
 
 ## Run the Servers 
 
-FINALLY! After all that setup it's finally time to run your OIDC IDP simulator and client app. Back in terminal, (make sure you still see the `(env)` at the beginning of your terminal line, indicating you are still in the Python virtual environment). 
+FINALLY! After all that setup it's finally time to run your OIDC IDP simulator and client app. Navigate back to the terminal (make sure you still see the `(env)` at the beginning of your terminal line, indicating you are still in the Python virtual environment). 
 
 
 ### Run OIDC Server
@@ -130,7 +130,7 @@ Keys generated and added to .env file.
  
  ### Run Client Application
  
- - Back in terminal, open a new tab with `cmd + t`. Then type the command `cd client && python client.py`. This spins up your test client application on port 5001.
+ - Back in terminal, open a new tab with `cmd + t`. Run `cd ..` to jump back to the root of the project. Fire up another virtual environment with `source env/bin/activate`, then type the command `cd client && python client.py`. This spins up your test client application on port 5001.
  
  ## Test it Out!
  - In a browser, navigate to `http://localhost:5001`. You will see our client app running with a link to **Login with External IDP Simulator**. Click it.
